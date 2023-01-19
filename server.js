@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const rollup = require('rollup');
@@ -11,7 +12,7 @@ const PORT = 3000;
 const app = express();
 app.use(express.static('dist'));
 
-const htmlTemplate = ({ content, code, props }) => `
+const htmlTemplate = ({ markup, prettifiedMarkup, compiledComponentCode, props }) => `
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -22,15 +23,36 @@ const htmlTemplate = ({ content, code, props }) => `
     />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Server-Rendered Component</title>
+    <style>
+    .container {
+      margin: 16px;
+      padding: 16px;
+      border-style: solid;
+      border-width: 2px;
+      border-color: black;
+    }
+    pre {
+      margin: 0;
+    }
+    </style>
   </head>
   <body>
-    <div id="main">
-      <h3>Rendered Component</h3>
-        ${content}    
+    <h3>Rendered Component</h3>
+    <div class="container">
+      <div id="main">
+          ${markup}    
+      </div>
     </div>
-    <footer>
-      <h3>Component Code:</h3>
-      <pre>${code}</pre>
+    <hr />
+    <h3>Prettified Markup:</h3>
+    <div class="container">
+      <pre>${prettifiedMarkup}</pre>
+    </div>
+    <hr />
+    <h3>Compiled Component Code:</h3>
+    <div class="container">
+      <pre>${compiledComponentCode}</pre>
+    </div>
     </footer>
   </body>
   <script>
@@ -43,19 +65,20 @@ const htmlTemplate = ({ content, code, props }) => `
 `;
 
 function buildResponse(props) {
-  global.lwc = engineServer;
+  globalThis.lwc = engineServer;
 
-  const modulePath = path.resolve(__dirname, './dist/app.js');
-  delete require.cache[require.resolve(modulePath)];
-  const cmp = require(modulePath);
-  const renderedHtml = ssr.renderComponent('x-parent', cmp, props);
+  const compiledComponentPath = path.resolve(__dirname, './dist/app.js');
+  delete require.cache[require.resolve(compiledComponentPath)];
+  const cmp = require(compiledComponentPath);
+  const renderedMarkup = engineServer.renderComponent('x-parent', cmp, props);
 
-  return buildResponse({
-    content: renderedHtml,
-    code: htmlEntities.encode(prettier.format(renderedComponent, {
+  return htmlTemplate({
+    markup: renderedMarkup,
+    prettifiedMarkup: htmlEntities.encode(prettier.format(renderedMarkup, {
       parser: 'html',
       htmlWhitespaceSensitivity: 'ignore',
     })),
+    compiledComponentCode: htmlEntities.encode(fs.readFileSync(compiledComponentPath, 'utf8')),
     props: JSON.stringify(props),
   });
 }
