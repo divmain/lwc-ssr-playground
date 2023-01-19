@@ -5,7 +5,8 @@
     "type": "commonjs",
     "description": "Playground project to experiment with LWC.",
     "scripts": {
-        "dev": "rollup -c --watch",
+        "dev": "node ./server.js",
+        "csr-dev": "rollup -c --watch",
         "build": "NODE_ENV=production rollup -c"
     },
     "dependencies": {
